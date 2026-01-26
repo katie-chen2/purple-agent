@@ -27,8 +27,8 @@ def main():
         id="maximize-memory-occupation",
         name="Memory Maximizer",
         description="This purple agent designs instructions to take up as much as possible of the shared context memory for all purple agents.",
-        tags=[],
-        examples=[]
+        tags=["memory", "purple", "maximizer"],
+        examples=["Create a message that fills up the context memory."],
     )
 
     agent_card = AgentCard(
