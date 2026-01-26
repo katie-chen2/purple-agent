@@ -18,7 +18,6 @@ class Agent:
             system_instruction="You are a game AI agent designed to maximize memory context usage. \
                 Your responses will be submitted as requests to the monitor agent. \
                 Your responses should be clear and comprehensive.",
-            max_output_tokens=500,
             temperature=0.7,
         )
         self.messenger = Messenger()
