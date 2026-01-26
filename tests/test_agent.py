@@ -138,7 +138,8 @@ def validate_event(data: dict[str, Any]) -> list[str]:
 # A2A messaging helpers
 
 async def send_text_message(text: str, url: str, context_id: str | None = None, streaming: bool = False):
-    async with httpx.AsyncClient(timeout=10) as httpx_client:
+    timeout = httpx.Timeout(10.0, read=60.0, write=30, connect=10.0)
+    async with httpx.AsyncClient(timeout=timeout) as httpx_client:
         resolver = A2ACardResolver(httpx_client=httpx_client, base_url=url)
         agent_card = await resolver.get_agent_card()
         config = ClientConfig(httpx_client=httpx_client, streaming=streaming)
