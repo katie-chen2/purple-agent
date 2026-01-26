@@ -32,6 +32,24 @@ def create_message(
     )
 
 
+def create_message_advanced(
+    *,
+    role: Role = Role.user,
+    parts: list[Part],
+    context_id: str | None = None,
+    metadata: dict | None = None,
+) -> Message:
+    """Create a message with multiple parts and optional metadata."""
+    return Message(
+        kind="message",
+        role=role,
+        parts=parts,
+        message_id=uuid4().hex,
+        context_id=context_id,
+        metadata=metadata,
+    )
+
+
 def merge_parts(parts: list[Part]) -> str:
     chunks = []
     for part in parts:
@@ -92,6 +110,54 @@ async def send_message(
         return outputs
 
 
+async def send_message_advanced(
+    message: Message,
+    base_url: str,
+    streaming: bool = False,
+    timeout: int = DEFAULT_TIMEOUT,
+    consumer: Consumer | None = None,
+):
+    """Send a pre-constructed Message object. Returns dict with context_id, response and status (if exists)"""
+    async with httpx.AsyncClient(timeout=timeout) as httpx_client:
+        resolver = A2ACardResolver(httpx_client=httpx_client, base_url=base_url)
+        agent_card = await resolver.get_agent_card()
+        config = ClientConfig(
+            httpx_client=httpx_client,
+            streaming=streaming,
+        )
+        factory = ClientFactory(config)
+        client = factory.create(agent_card)
+        if consumer:
+            await client.add_event_consumer(consumer)
+
+        last_event = None
+        outputs = {"response": "", "context_id": None}
+
+        # if streaming == False, only one event is generated
+        async for event in client.send_message(message):
+            last_event = event
+
+        match last_event:
+            case Message() as msg:
+                outputs["context_id"] = msg.context_id
+                outputs["response"] += merge_parts(msg.parts)
+
+            case (task, update):
+                outputs["context_id"] = task.context_id
+                outputs["status"] = task.status.state.value
+                msg = task.status.message
+                if msg:
+                    outputs["response"] += merge_parts(msg.parts)
+                if task.artifacts:
+                    for artifact in task.artifacts:
+                        outputs["response"] += merge_parts(artifact.parts)
+
+            case _:
+                pass
+
+        return outputs
+
+
 class Messenger:
     def __init__(self):
         self._context_ids = {}
@@ -119,6 +185,42 @@ class Messenger:
             message=message,
             base_url=url,
             context_id=None if new_conversation else self._context_ids.get(url, None),
+            timeout=timeout,
+        )
+        if outputs.get("status", "completed") != "completed":
+            raise RuntimeError(f"{url} responded with: {outputs}")
+        self._context_ids[url] = outputs.get("context_id", None)
+        return outputs["response"]
+
+    async def talk_to_agent_advanced(
+        self,
+        parts: list[Part],
+        url: str,
+        metadata: dict | None = None,
+        new_conversation: bool = False,
+        timeout: int = DEFAULT_TIMEOUT,
+    ):
+        """
+        Communicate with another agent by sending a message with multiple parts and optional metadata.
+
+        Args:
+            parts: List of Part objects to send (can include TextPart, DataPart, etc.)
+            url: The agent's URL endpoint
+            metadata: Optional dictionary of metadata to attach to the message
+            new_conversation: If True, start fresh conversation; if False, continue existing conversation
+            timeout: Timeout in seconds for the request (default: 300)
+
+        Returns:
+            str: The agent's response message
+        """
+        message = create_message_advanced(
+            parts=parts,
+            context_id=None if new_conversation else self._context_ids.get(url, None),
+            metadata=metadata,
+        )
+        outputs = await send_message_advanced(
+            message=message,
+            base_url=url,
             timeout=timeout,
         )
         if outputs.get("status", "completed") != "completed":
