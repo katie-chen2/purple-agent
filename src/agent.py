@@ -58,10 +58,10 @@ class Agent:
         await updater.update_status(
             TaskState.working, new_agent_text_message("Thinking...")
         )
-        await updater.add_artifact(
-            parts=[Part(root=TextPart(text=input_text))],
-            name="Echo",
-        )
+        #await updater.add_artifact(
+        #    parts=[Part(root=TextPart(text=input_text))],
+        #    name="Echo",
+        #)
         
         # Optionally contact another agent if configured; otherwise, finish locally.
         if self.green_agent_url:
@@ -78,6 +78,10 @@ class Agent:
                 parts=parts,
                 url=self.green_agent_url,
                 metadata={"sender": self.agent_name},
+            )
+            await updater.add_artifact(
+                parts=[Part(root=TextPart(text="Contacted GREEN_AGENT successfully."))],
+                name="Info",
             )
         else:
             await updater.add_artifact(
