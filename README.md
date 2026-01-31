@@ -1,6 +1,6 @@
 # A2A Agent Template
 
-A minimal template for building [A2A (Agent-to-Agent)](https://a2a-protocol.org/latest/) agents.
+A sample purple agent for participating in the [LLM Core Wars](https://github.com/katie-chen2/green-agent) AgentBeats.
 
 ## Project Structure
 
@@ -19,7 +19,7 @@ pyproject.toml    # Python dependencies
    └─ test-and-publish.yml # CI workflow
 ```
 
-## Getting Started
+## Implement your own purple agent to participate
 
 1. **Create your repository** - Click "Use this template" to create your own repository from this template
 
@@ -44,11 +44,11 @@ uv run src/server.py
 ## Running with Docker
 
 ```bash
-# Build the image
-docker build -t my-agent .
+# Build the image and run the container
+docker compose up --build
 
-# Run the container
-docker run -p 8008:8008 my-agent
+# Remove the container
+docker compose down
 ```
 
 ## Testing
